@@ -26,10 +26,9 @@ import numpy as np
 class FlightModel:    
     
     def __init__(self):
-        self.hello           = 'world'
-        self.cfg_file        = '../cfg/yolov3.cfg'
-        self.weight_file     = '../weights/yolov3.weights'
-        self.namesfile       = '../data/coco.names'
+        self.cfg_file        = './cfg/yolov3.cfg'
+        self.weight_file     = './weights/yolov3.weights'
+        self.namesfile       = './data/coco.names'
         self.m               = Darknet(self.cfg_file)
         
         self.z_threshold     = .25
@@ -42,13 +41,14 @@ class FlightModel:
             boxes = self.get_boxes(rgb_image)
         
         # -- run box selection process
-        # box = _pick_best_box(...)
-        box = boxes[0] # TODO
+        # car = _pick_best_box(...)
+        car = boxes[0] # TODO
         
         center_of_frame_coordinates = self._get_center_of_frame_coordinates(img)
-        adjustments = self._get_adjustments(box, center_of_frame_coordinates)
+        adjustments = self._get_adjustments(car, center_of_frame_coordinates)
         directions = self._determine_flight_directions(adjustments)
-        return directions
+        car['directions'] = directions
+        return directions, car
     
     
     def get_boxes(self, img):
@@ -60,28 +60,27 @@ class FlightModel:
     def resize_image(self, img):    
         return cv2.resize(img, (self.m.width, self.m.height))
     
-    def plot_boxes(self, img, boxes):
-        height, width, _ = img.shape
+    def plot_frame(self, frame, box):
+        height, width, _ = frame.shape
         # Create a figure and plot the image
         fig, a = plt.subplots(1,1)
-        a.imshow(img)
+        a.imshow(frame)
     
-        for i in range(len(boxes)):
-            box = boxes[i]
 
-            # Set the postion and size of the bounding box. (x1, y2) is the pixel coordinate of the
-            # lower-left corner of the bounding box relative to the size of the image.
-            rect = patches.Rectangle((box['x1'], box['y1']),
-                                     box['width'], box['height'],
-                                     linewidth = 2,
-                                     edgecolor = box['rgb'],
-                                     facecolor = 'none')            
-            # Draw the bounding box on top of the image
-            a.add_patch(rect)
-            
-            circle = patches.Circle(box['centroid'], 10)
-            a.add_patch(circle)
-            
+        # Set the postion and size of the bounding box. (x1, y2) is the pixel coordinate of the
+        # upper-left corner of the bounding box relative to the size of the image.
+        rect = patches.Rectangle((box['x1'], box['y1']),
+                                 box['width'], box['height'],
+                                 linewidth = 2,
+                                 edgecolor = box['rgb'],
+                                 facecolor = 'none')            
+        # Draw the bounding box on top of the image
+        a.add_patch(rect)
+        
+        circle = patches.Circle(box['centroid'], 10)
+        a.add_patch(circle)
+        
+        # draw crosshairs
         center_y = int(height/2)
         center_x = int(width/2)
         z_factor = .01
@@ -90,7 +89,19 @@ class FlightModel:
         plt.axhline(y=center_y, color='r', linestyle='-')
         plt.axvline(x=center_x, color='r', linestyle='-')
         
-#         plt.grid(True)
+        
+        # draw directions
+        directions_str = ""
+        for direction in box['directions']:
+            directions_str += "{}: {}\n".format(direction[0], direction[1])
+            
+        plt.text(10, 60, directions_str.rstrip(), color="w", bbox=dict(boxstyle="round",
+             ec="black",
+             fc="black",                 
+        ))
+        
+        
+        # show verbose y axis lines on plot
         plt.grid(color='g', linestyle='-', linewidth=1)
         plt.yticks(np.arange(0, height+1, 20.0))
 
@@ -151,7 +162,6 @@ class FlightModel:
         else:
             directions.append("")
 
-        print("directions:", directions)
         return directions
 
     def fly_drone():
