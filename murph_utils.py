@@ -316,8 +316,7 @@ def plot_boxes(img, boxes, class_names, plot_labels, color = None):
 #################################################################################################################
 ######## Whole lotta extra fluff down here - need to do some trimming
 
-def get_all_boxes(img, tensors, class_names):
-    color = None # TODO
+def get_all_boxes(img, tensors, class_names, color = None):
     boxes = []
      # Define a tensor used to set the colors of the bounding boxes
     colors = torch.FloatTensor([[1,0,1],[0,0,1],[0,1,1],[0,1,0],[1,1,0],[1,0,0]])
@@ -368,10 +367,9 @@ def get_all_boxes(img, tensors, class_names):
                 rgb = color 
 
         box_width = x2 - x1
-        box_height = y1 - y2
-#         height = y2 - y1
-        centroid = (abs(int(min(x1,x2) + box_width / 2)), abs(int(max(y1, y2) + box_height / 2)))
-        
+        box_height = y2 - y1
+        centroid = ((x1 + box_width / 2), y1 + (box_height / 2))
+    
         boxes.append({
             "x1":  x1,
             "x2": x2,

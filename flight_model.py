@@ -17,6 +17,7 @@ from darknet import Darknet
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from pprint import pprint
+import numpy as np
 
 """
   fmodel = flight_model(cfg_file: 'path/somewhere', weights_file: "path/somewehere", ...)
@@ -35,8 +36,10 @@ class FlightModel:
         self.distance_factor = 20
 
     # -- public functions
-    def get_flight_directions(self, img):
-        boxes = self.get_boxes(img)
+    def get_flight_directions(self, img, boxes = None):
+        if boxes == None:
+            rgb_image  = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            boxes = self.get_boxes(rgb_image)
         
         # -- run box selection process
         # box = _pick_best_box(...)
@@ -58,23 +61,40 @@ class FlightModel:
         return cv2.resize(img, (self.m.width, self.m.height))
     
     def plot_boxes(self, img, boxes):
+        height, width, _ = img.shape
         # Create a figure and plot the image
         fig, a = plt.subplots(1,1)
         a.imshow(img)
-        pprint(boxes)
     
         for i in range(len(boxes)):
             box = boxes[i]
+
             # Set the postion and size of the bounding box. (x1, y2) is the pixel coordinate of the
             # lower-left corner of the bounding box relative to the size of the image.
-            rect = patches.Rectangle((box['x1'], box['y2']),
+            rect = patches.Rectangle((box['x1'], box['y1']),
                                      box['width'], box['height'],
                                      linewidth = 2,
                                      edgecolor = box['rgb'],
                                      facecolor = 'none')            
-    
             # Draw the bounding box on top of the image
             a.add_patch(rect)
+            
+            circle = patches.Circle(box['centroid'], 10)
+            a.add_patch(circle)
+            
+        center_y = int(height/2)
+        center_x = int(width/2)
+        z_factor = .01
+        z_target = patches.Circle((center_x, center_y), int(height*z_factor), color = 'r', fill = False)
+        a.add_patch(z_target)
+        plt.axhline(y=center_y, color='r', linestyle='-')
+        plt.axvline(x=center_x, color='r', linestyle='-')
+        
+#         plt.grid(True)
+        plt.grid(color='g', linestyle='-', linewidth=1)
+        plt.yticks(np.arange(0, height+1, 20.0))
+
+
         plt.show()
         
     # -- private functions
@@ -100,8 +120,6 @@ class FlightModel:
     
         x = cX - fX
         y = cY - fY
-        print("cY", cY)
-        print("fY", fY)
         z = (cZ - self.z_threshold) * self.distance_factor
 
         return [x, y, z]
@@ -110,9 +128,7 @@ class FlightModel:
     def _determine_flight_directions(self, adjustments):
         horiz, vert, dist = adjustments
         directions = list()
-        
-        print(adjustments)
-        
+            
         if horiz > 0:
             directions.append(["move_right", abs(horiz)])
         elif horiz < 0:
@@ -135,6 +151,7 @@ class FlightModel:
         else:
             directions.append("")
 
+        print("directions:", directions)
         return directions
 
     def fly_drone():
